@@ -2,63 +2,64 @@ package com.vanilla.poc.scaladsl
 
 import akka.Done
 import akka.stream._
-import akka.stream.stage.{GraphStageLogic, GraphStageWithMaterializedValue, InHandler}
+import akka.stream.scaladsl.{Flow, Keep, Sink}
+import akka.stream.stage._
 import org.apache.avro.Schema
 import org.apache.avro.generic.GenericRecord
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.parquet.avro.AvroParquetWriter
 import org.apache.parquet.hadoop.ParquetWriter
-import scala.concurrent.{Future, Promise}
+
+import scala.concurrent.Future
 
 
 object AvroParquetSink {
 
   def apply(path:String, schema: Schema,conf:Configuration): Graph[SinkShape[GenericRecord], Future[Done]] =
-    new AvroParquetSink(path,schema,conf)
+   Flow.fromGraph(new AvroParquetFlow(path, schema, conf)).toMat(Sink.ignore)(Keep.right)
+
 }
 
- class AvroParquetSink(path:String, schema: Schema, conf:Configuration) extends GraphStageWithMaterializedValue[SinkShape[GenericRecord],Future[Done]] {
-
-   val in: Inlet[GenericRecord] = Inlet("ParquetSink")
 
 
-   override def shape: SinkShape[GenericRecord] = SinkShape.of(in)
+class AvroParquetFlow(path:String, schema: Schema, conf:Configuration) extends GraphStage[FlowShape[GenericRecord,GenericRecord]] {
 
-   override def createLogicAndMaterializedValue(inheritedAttributes: Attributes): (GraphStageLogic, Future[Done]) = {
-     val promise: Promise[Done] = Promise[Done]
+  val in:Inlet[GenericRecord] = Inlet("AvroParquetSink.in")
+  val out:Outlet[GenericRecord] = Outlet("AvroParquetSink.out")
+  override val shape: FlowShape[GenericRecord, GenericRecord] = FlowShape.of(in, out)
 
-     val writer: ParquetWriter[GenericRecord] = AvroParquetWriter.builder[GenericRecord](new Path(path)).withConf(conf).withSchema(schema).build()
-     val logic: GraphStageLogic = new GraphStageLogic(shape) {
+  override def createLogic(attr: Attributes): GraphStageLogic = {
+    val writer: ParquetWriter[GenericRecord] = AvroParquetWriter.builder[GenericRecord](new Path(path)).withConf(conf).withSchema(schema).build()
 
-       override def preStart(): Unit = pull(in)
-
-       setHandler(in, new InHandler {
-
-
-         override def onUpstreamFinish(): Unit = {
-           //super.onUpstreamFinish()
-           writer.close()
-           promise.success(Done)
-         }
-
-         override def onUpstreamFailure(ex: Throwable): Unit = {
-           promise.failure(ex)
-           super.onUpstreamFailure(ex)
-           writer.close()
-         }
-
-         @scala.throws[Exception](classOf[Exception])
-         override def onPush(): Unit = {
-           val obtainedValue = grab(in)
+    new GraphStageLogic(shape) {
+      setHandler(in, new InHandler {
 
 
-           writer.write(obtainedValue)
-           pull(in)
-         }
-       })
-     }
-     (logic,promise.future)
+        override def onUpstreamFinish(): Unit = {
+          //super.onUpstreamFinish()
+          writer.close()
+          completeStage()
+        }
 
-   }
- }
+        override def onUpstreamFailure(ex: Throwable): Unit = {
+          super.onUpstreamFailure(ex)
+          writer.close()
+        }
+
+        @scala.throws[Exception](classOf[Exception])
+        override def onPush(): Unit = {
+          val obtainedValue = grab(in)
+          writer.write(obtainedValue)
+          push(out,obtainedValue)
+        }
+      })
+
+      setHandler(out, new OutHandler {
+        override def onPull(): Unit = {
+          pull(in)
+        }
+      })
+    }
+  }
+}

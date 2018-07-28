@@ -74,7 +74,7 @@ public class AvroParquetSinkTest {
 
     private int checkResponse() throws IOException {
 
-        Path dataFile = new Path(file + ".parquet");
+        Path dataFile = new Path(file);
         ParquetReader<GenericRecord> reader = AvroParquetReader
                 .<GenericRecord>builder(dataFile)
                 .disableCompatibility()

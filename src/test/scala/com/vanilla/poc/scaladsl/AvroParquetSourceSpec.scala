@@ -43,7 +43,6 @@ class AvroParquetSourceSpec extends Specification with AbstractAvroParquet  with
         .set("id", doc.id).set("body", doc.body).build()
     }.
       runWith(sink)
-
     Await.result[Done](result,Duration(5,TimeUnit.SECONDS))
   }
 }
