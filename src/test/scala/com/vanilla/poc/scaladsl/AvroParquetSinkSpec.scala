@@ -13,12 +13,14 @@ import scala.collection.mutable
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 
-class ParquetSinkSpecAbstract extends Specification with AfterAll with AbstractAvroParquet {
+class AvroParquetSinkSpec extends Specification with AfterAll with AbstractAvroParquet {
 
 
   "ParquetSing Sink" should{
 
     "create new Parquet file" in{
+      case class Document(id:String, body:String)
+
 
       val docs = List[Document](
         Document("id1", "sdaada"),
@@ -56,4 +58,3 @@ class ParquetSinkSpecAbstract extends Specification with AfterAll with AbstractA
 
 }
 
-case class Document(id:String, body:String)

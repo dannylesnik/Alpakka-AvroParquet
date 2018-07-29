@@ -28,6 +28,8 @@ class AvroParquetSourceSpec extends Specification with AbstractAvroParquet  with
   }
 
   override def beforeAll(): Unit = {
+    case class Document(id:String, body:String)
+
     val docs = List[Document](
       Document("id1", "data1"),
       Document("id1", "data2"),
