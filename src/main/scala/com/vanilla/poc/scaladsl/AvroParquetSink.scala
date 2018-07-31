@@ -4,33 +4,28 @@ import akka.Done
 import akka.stream._
 import akka.stream.scaladsl.{Flow, Keep, Sink}
 import akka.stream.stage._
-import org.apache.avro.Schema
 import org.apache.avro.generic.GenericRecord
-import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.Path
-import org.apache.parquet.avro.AvroParquetWriter
 import org.apache.parquet.hadoop.ParquetWriter
-
 import scala.concurrent.Future
 
 
 object AvroParquetSink {
 
-  def apply(path:String, schema: Schema,conf:Configuration): Graph[SinkShape[GenericRecord], Future[Done]] =
-   Flow.fromGraph(new AvroParquetFlow(path, schema, conf)).toMat(Sink.ignore)(Keep.right)
+  def apply(writer:ParquetWriter[GenericRecord]): Sink[GenericRecord, Future[Done]] = {
+    Flow.fromGraph(new AvroParquetFlow(writer)).toMat(Sink.ignore)(Keep.right)
+  }
 
 }
 
 
 
-class AvroParquetFlow(path:String, schema: Schema, conf:Configuration) extends GraphStage[FlowShape[GenericRecord,GenericRecord]] {
+class AvroParquetFlow(writer:ParquetWriter[GenericRecord]) extends GraphStage[FlowShape[GenericRecord,GenericRecord]] {
 
   val in:Inlet[GenericRecord] = Inlet("AvroParquetSink.in")
   val out:Outlet[GenericRecord] = Outlet("AvroParquetSink.out")
   override val shape: FlowShape[GenericRecord, GenericRecord] = FlowShape.of(in, out)
 
   override def createLogic(attr: Attributes): GraphStageLogic = {
-    val writer: ParquetWriter[GenericRecord] = AvroParquetWriter.builder[GenericRecord](new Path(path)).withConf(conf).withSchema(schema).build()
 
     new GraphStageLogic(shape) {
       setHandler(in, new InHandler {

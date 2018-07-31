@@ -14,8 +14,10 @@ import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.avro.AvroParquetReader;
+import org.apache.parquet.avro.AvroParquetWriter;
 import org.apache.parquet.avro.AvroReadSupport;
 import org.apache.parquet.hadoop.ParquetReader;
+import org.apache.parquet.hadoop.ParquetWriter;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -60,7 +62,12 @@ public class AvroParquetSinkTest {
     @Test
     public void createNewParquetFile() throws InterruptedException, IOException {
 
-        Sink<GenericRecord, CompletionStage<Done>> sink = AvroParquetSink.create(file, schema, conf);
+        Configuration conf = new Configuration();
+        conf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, true);
+        ParquetWriter<GenericRecord> writer = AvroParquetWriter.<GenericRecord>builder(new Path(file)).withConf(conf).withSchema(schema).build();
+
+
+        Sink<GenericRecord, CompletionStage<Done>> sink = AvroParquetSink.create(writer);
 
        Source.from(records).runWith(sink, materializer);
 

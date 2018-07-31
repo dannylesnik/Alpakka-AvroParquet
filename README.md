@@ -18,7 +18,8 @@ conf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, true)
 val schema: Schema =new Schema.Parser().parse("{\"type\":\"record\",\"name\":\"Document\",\"fields\":[{\"name\":\"id\",\"type\":\"string\"},{\"name\":\"body\",\"type\":\"string\"}]}")
 
 //Sink
-val sink = AvroParquetSink("./sample.parquet",schema,conf )
+val writer: ParquetWriter[GenericRecord] = AvroParquetWriter.builder[GenericRecord](new Path("./test.parquet")).withConf(conf).withSchema(schema).build()
+val sink = AvroParquetSink(writer)
 
 val result: Future[Done] = source.map { doc =>
   new GenericRecordBuilder(schema)
@@ -27,7 +28,9 @@ val result: Future[Done] = source.map { doc =>
 
 
 //Source
-AvroParquetSource( folder+"/sample.parquet",conf).runWith(Sink.ignore)
+val reader:ParquetReader[GenericRecord] = AvroParquetReader.builder[GenericRecord](new Path("./test.parquet")).withConf(conf).build()
+
+AvroParquetSource(reader).runWith(Sink.ignore)
 ``` 
 
 Java:
@@ -42,9 +45,11 @@ conf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, true);
 final Schema schema =new Schema.Parser().parse("{\"type\":\"record\",\"name\":\"Document\",\"fields\":[{\"name\":\"id\",\"type\":\"string\"},{\"name\":\"body\",\"type\":\"string\"}]}");
 
 //Sink
-Sink<GenericRecord, CompletionStage<Done>> sink = AvroParquetSink.create(file, schema, conf);
+ParquetWriter<GenericRecord> writer = AvroParquetWriter.<GenericRecord>builder(new Path("./test.parquet")).withConf(conf).withSchema(schema).build();
+Sink<GenericRecord, CompletionStage<Done>> sink = AvroParquetSink.create(writer);
 Source.from(records).runWith(sink, materializer);
 
 //Source
-AvroParquetSource.create("./sample.parquet", conf).runWith(Sink.ignore(),materializer);
+ParquetReader<GenericRecord> reader = AvroParquetReader.<GenericRecord>builder(new Path("./test.parquet")).disableCompatibility().build();
+AvroParquetSource.create(reader).runWith(Sink.ignore(),materializer);
 ```

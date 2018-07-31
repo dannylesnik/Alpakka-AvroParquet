@@ -5,7 +5,10 @@ import java.util.concurrent.TimeUnit
 import akka.Done
 import akka.stream.scaladsl.Source
 import org.apache.avro.generic.{GenericRecord, GenericRecordBuilder}
-import org.apache.parquet.avro.AvroParquetReader
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.Path
+import org.apache.parquet.avro.{AvroParquetReader, AvroParquetWriter, AvroReadSupport}
+import org.apache.parquet.hadoop.ParquetWriter
 import org.specs2.mutable.Specification
 import org.specs2.specification.AfterAll
 
@@ -30,7 +33,10 @@ class AvroParquetSinkSpec extends Specification with AfterAll with AbstractAvroP
       val source = Source.fromIterator(() =>docs.iterator)
 
       val file = folder+"/test.parquet"
-      val sink = AvroParquetSink(file,schema,conf )
+      val conf = new Configuration()
+      conf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, true)
+      val writer: ParquetWriter[GenericRecord] = AvroParquetWriter.builder[GenericRecord](new Path(file)).withConf(conf).withSchema(schema).build()
+      val sink = AvroParquetSink(writer)
 
       val result: Future[Done] = source.map { doc =>
         new GenericRecordBuilder(schema)
