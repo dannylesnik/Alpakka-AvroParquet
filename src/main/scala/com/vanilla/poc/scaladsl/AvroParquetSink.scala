@@ -8,7 +8,6 @@ import org.apache.avro.generic.GenericRecord
 import org.apache.parquet.hadoop.ParquetWriter
 import scala.concurrent.Future
 
-
 object AvroParquetSink {
 
   def apply(writer:ParquetWriter[GenericRecord]): Sink[GenericRecord, Future[Done]] = {
@@ -16,8 +15,6 @@ object AvroParquetSink {
   }
 
 }
-
-
 
 class AvroParquetFlow(writer:ParquetWriter[GenericRecord]) extends GraphStage[FlowShape[GenericRecord,GenericRecord]] {
 
@@ -29,7 +26,6 @@ class AvroParquetFlow(writer:ParquetWriter[GenericRecord]) extends GraphStage[Fl
 
     new GraphStageLogic(shape) {
       setHandler(in, new InHandler {
-
 
         override def onUpstreamFinish(): Unit = {
           //super.onUpstreamFinish()

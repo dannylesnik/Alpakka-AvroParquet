@@ -26,9 +26,29 @@ class AvroParquetSourceSpec extends Specification with AbstractAvroParquet  with
       val file = folder+"/test.parquet"
       val conf = new Configuration()
       conf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, true)
+
       val reader:ParquetReader[GenericRecord] = AvroParquetReader.builder[GenericRecord](new Path(file)).withConf(conf).build()
 
-     val (_,sink) = AvroParquetSource( reader).toMat(TestSink.probe)(Keep.both).run()
+      val (_,sink) = AvroParquetSource( reader).toMat(TestSink.probe)(Keep.both).run()
+
+      sink.toStrict(Duration(3,TimeUnit.SECONDS)).seq.length shouldEqual 3
+
+    }
+
+    "read from parquet file using implicit AvroParquetSource" in {
+
+      val file = folder+"/test.parquet"
+      val conf = new Configuration()
+      conf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, true)
+
+      val reader:ParquetReader[GenericRecord] = AvroParquetReader.builder[GenericRecord](new Path(file)).withConf(conf).build()
+
+      // import implicit AvroParquetSource
+      import StreamAvroParquetImplicits._
+
+      val (_,sink) =
+        Source.fromAvroParquet(reader)
+         .toMat(TestSink.probe)(Keep.both).run()
 
       sink.toStrict(Duration(3,TimeUnit.SECONDS)).seq.length shouldEqual 3
 
